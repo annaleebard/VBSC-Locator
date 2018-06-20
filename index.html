@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html data-brackets-id='502'>
+<head data-brackets-id='503'>
+    <meta data-brackets-id='504' charset='utf-8' />
+    <title data-brackets-id='505'></title>
+    <meta data-brackets-id='506' name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script data-brackets-id='507' src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.41.0/mapbox-gl.js'></script>
+    <link data-brackets-id='508' href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.41.0/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.2.0/mapbox-gl-geocoder.min.js'></script>
+    <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v2.2.0/mapbox-gl-geocoder.css' type='text/css' />
+
+    <style data-brackets-id='509'>
+     
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; width:100%; }
+        
+ #map-overlay-hawaii {
+      position:absolute;
+      left:10px;
+      bottom:10px;
+      width:250px;
+      height:200px;
+      border:1px solid #fff;
+  }
+  #map-overlay-alaska {
+      position:absolute;
+      left:10px;
+      bottom:200px;
+      width:250px;
+      height:200px;
+      border:1px solid #fff;
+  }
+        
+ #map{
+      position:absolute;
+      bottom:0px;
+      top: 0px;
+      width:100%;
+      height:100%;
+  }
+    #header {
+        position:absolute;
+        background:#27ae60;
+        opacity: .8;
+        width:100%;
+    }
+        
+     h1 { 
+         color: #ecf0f1; font-family: 'Helvetica Neue', sans-serif;
+         font-size: 25px;
+         letter-spacing: 1px;
+         line-height: 1;
+         text-align:left; 
+         padding-left: 10px;
+     }
+     .mapboxgl-popup {
+            max-width: 400px;
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        }
+
+        
+    </style>
+</head>
+    
+<body data-brackets-id='510'>
+<div data-brackets-id='511' id='map'></div>
+<div data-brackets-id='512' id='map-overlay-hawaii'></div>
+<div data-brackets-id='513' id='map-overlay-alaska'></div>
+<div data-brackets-id='514' id= 'header'>
+
+<h1 data-brackets-id='515'>Values-Based Food Supply Chains</h1>
+    
+    </div>
+
+
+<script data-brackets-id='516'>
+
+mapboxgl.accessToken = 'pk.eyJ1IjoiYW5uYWxlZWJhcmQiLCJhIjoiY2lrOHFpcGt5MDN6a3V2a245YWJ2enpzMiJ9.2bPK_dWaz3fkEtISPdvQog';
+    var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v9',
+    center: [-103.59179687498357, 40.66995747013945],
+    zoom: 3
+});
+    var mapOverlayHawaii = new mapboxgl.Map({
+    container: 'map-overlay-hawaii',
+    style: 'mapbox://styles/mapbox/streets-v9',
+    center: [-156.99179687498357, 20.66995747013945],
+    zoom: 4.5
+});
+    var mapOverlayAlaska = new mapboxgl.Map({
+    container: 'map-overlay-alaska',
+    style: 'mapbox://styles/mapbox/streets-v9',
+    center: [-155.59179687498357, 65.66995747013945],
+    zoom: 1
+});
+
+
+    
+map.on('load', function() {
+    // Add a new source from our GeoJSON data and set the
+    // 'cluster' option to true. GL-JS will add the point_count property to your source data.
+    
+    map.addSource("VBSCsites", {
+        type: "geojson",
+        data: '/resaveOldsites.geojson',
+        cluster: true,
+        clusterMaxZoom:4, // Max zoom to cluster points on
+        clusterRadius: 100 // Radius of each cluster when clustering points (defaults to 50)
+
+    });
+
+    map.addLayer({
+        id: "clusters",
+        type: "circle",
+        source: "VBSCsites",
+        filter: ["has", "point_count"],
+        paint: {
+            "circle-color": {
+                property: "point_count",
+                type: "interval",
+                stops: [
+                    [0, "#51bbd6"],
+                    [30, "#f1f075"],
+                    [60, "#f28cb1"],
+                    [90, "#f1c40f"],
+                ]
+            },
+            "circle-radius": {
+                property: "point_count",
+                type: "interval",
+                stops: [
+                    [0, 20 ],
+                    [100, 30],
+                    [750, 40]
+                ]
+            }
+        }
+        
+    });
+
+    map.addLayer({
+        id: "cluster-count",
+        type: "symbol",
+        source: "VBSCsites",
+        filter: ["has", "point_count"],
+        layout: {
+            "text-field": "{point_count_abbreviated}",
+            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+            "text-size": 12
+        }
+    });
+
+     
+    map.addLayer({
+        id: "unclustered-point",
+        type: "circle",
+        source: "VBSCsites",
+        filter: ["!has", "point_count"],
+        paint: {
+            "circle-color": "#11b4da",
+            "circle-radius": 6,
+            "circle-stroke-width": 1,
+            "circle-stroke-color": "#fff"
+        }
+      
+    });
+    
+     var popup = new mapboxgl.Popup({
+        closeButton: false,
+        closeOnClick: false
+    });
+    
+       map.on('click', 'unclustered-point', function (e) {
+        new mapboxgl.Popup()
+            .setLngLat(e.features[0].geometry.coordinates)
+            .setHTML(e.features[0].properties.business_n)
+            .addTo(map);
+    });
+
+    // Change the cursor to a pointer when the mouse is over the places layer.
+    map.on('mouseenter', 'unclustered-point', function () {
+        map.getCanvas().style.cursor = 'pointer';
+    });
+
+    // Change it back to a pointer when it leaves.
+    map.on('mouseleave', 'unclustered-point', function () {
+        map.getCanvas().style.cursor = '';
+    });
+
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYW5uYWxlZWJhcmQiLCJhIjoiY2lrOHFpcGt5MDN6a3V2a245YWJ2enpzMiJ9.2bPK_dWaz3fkEtISPdvQog';
+    map.addControl(new MapboxGeocoder({
+    accessToken: mapboxgl.accessToken,
+
+    // limit results to Australia
+    country: 'us',
+
+    
+}));
+     
+});
+
+
+</script>
+
+</body>
+</html>
